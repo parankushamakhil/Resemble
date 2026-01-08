@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resemble - Cognitive Assessment</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- Design System --- */
+        :root {
+            /* Palette */
+            --primary: #0ea5e9;
+            --primary-dark: #0284c7;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-light: #e2e8f0;
+            
+            /* Backgrounds */
+            --app-bg: radial-gradient(circle at top left, #f8fafc 0%, #ffffff 100%);
+            --card-bg: #ffffff;
+            --panel-left-bg: #f1f5f9;
+            
+            /* Game Colors */
+            --c-blue: #3b82f6;
+            --c-yellow: #fde047;
+            --c-red: #f43f5e;
+            
+            /* Dimensions */
+            --card-radius: 24px;
+            --grid-size: 260px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--app-bg);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- Header --- */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 40px; background: #fff; border-bottom: 1px solid var(--border-light);
+            flex-shrink: 0;
+        }
+        .brand-icon {
+            width: 36px; height: 36px; background: var(--primary); color: white;
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 20px;
+        }
+        .header-left { display: flex; align-items: center; gap: 16px; }
+        .game-title { font-weight: 700; color: #334155; font-size: 18px; }
+        .chip {
+            background: #f8fafc; color: var(--primary); border: 1px solid var(--border-light);
+            padding: 6px 16px; border-radius: 50px; font-size: 13px; font-weight: 600;
+        }
+
+        /* --- Main Layout --- */
+        .main-content {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--card-radius);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
+            max-width: 960px; width: 100%; height: 600px;
+            border: 1px solid var(--border-light);
+            display: flex; overflow: hidden;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        /* --- Split Panels --- */
+        .panel {
+            flex: 1; padding: 30px;
+            display: flex; flex-direction: column;
+            align-items: center;
+            justify-content: space-between; 
+        }
+
+        .panel-left { background: var(--panel-left-bg); border-right: 1px solid var(--border-light); }
+        .panel-right { background: #fff; }
+
+        .panel-header { width: 100%; text-align: center; }
+        .label {
+            font-size: 11px; font-weight: 800; letter-spacing: 2px;
+            color: var(--text-muted); text-transform: uppercase;
+        }
+
+        /* --- Grids --- */
+        .grid-wrapper {
+            width: var(--grid-size); height: var(--grid-size);
+            margin: auto; 
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            width: 100%; height: 100%;
+        }
+
+        /* OBJECTIVE STYLE: Seamless Single Block */
+        /* Note: We force 'border: none' on children to override any color borders */
+        .grid.seamless {
+            gap: 0; border: 0; box-shadow: 0 10px 30px rgba(0,0,0,0.1); background: transparent;
+        }
+        .grid.seamless .cell { 
+            border-radius: 0; 
+            border: none !important; /* Force removal of borders here */
+        }
+        /* Hide eraser icon in objective */
+        .grid.seamless .bg-white::after { display: none; } 
+
+        /* TARGET STYLE: Building Blocks */
+        .grid.segmented { gap: 6px; }
+        .grid.segmented .cell {
+            border-radius: 4px;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0; /* Default border */
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .grid.segmented .cell:hover { border-color: var(--primary); transform: scale(0.98); }
+
+        .cell { width: 100%; height: 100%; position: relative; overflow: hidden; }
+
+        /* --- Controls --- */
+        .panel-footer {
+            width: 100%; display: flex; flex-direction: column; align-items: center;
+            height: 120px; justify-content: flex-end;
+        }
+
+        .instr-val {
+            font-size: 48px; font-weight: 800; color: var(--text-main);
+            display: flex; align-items: center; justify-content: center;
+            gap: 15px; line-height: 1; margin-top: 5px;
+        }
+        .instr-icon { font-size: 42px; color: var(--primary); }
+
+        .palette-grid {
+            display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+            margin-bottom: 15px;
+        }
+        .p-item {
+            width: 50px; height: 50px; border-radius: 8px; cursor: pointer;
+            border: 3px solid transparent; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .p-item:hover { transform: translateY(-3px); }
+        .p-item.selected {
+            border-color: var(--text-main); transform: scale(1.1);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1); z-index: 5;
+        }
+
+        /* --- COLOR UTILITIES --- */
+        /* These apply backgrounds. Borders are handled by .grid context above. */
+        
+        .bg-white { background: #fff !important; }
+        /* Only show border/icon for palette or target grid, NOT objective */
+        .grid.segmented .bg-white, .p-item.bg-white { border: 1px solid #cbd5e1 !important; }
+        .grid.segmented .bg-white::after, .p-item.bg-white::after { 
+            content: '✕'; position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#cbd5e1; font-size: 12px; 
+        }
+        
+        .solid-blue { background: var(--c-blue) !important; }
+        .solid-yellow { background: var(--c-yellow) !important; }
+        
+        .split-yb-0 { background: linear-gradient(135deg, var(--c-yellow) 50%, var(--c-blue) 50%) !important; }
+        .split-yb-1 { background: linear-gradient(225deg, var(--c-yellow) 50%, var(--c-blue) 50%) !important; }
+        .split-yb-2 { background: linear-gradient(315deg, var(--c-yellow) 50%, var(--c-blue) 50%) !important; }
+        .split-yb-3 { background: linear-gradient(45deg, var(--c-yellow) 50%, var(--c-blue) 50%) !important; }
+        .split-br-0 { background: linear-gradient(135deg, var(--c-blue) 50%, var(--c-red) 50%) !important; }
+
+        /* Buttons */
+        .primary-btn {
+            background: var(--primary); color: white; width: 100%;
+            padding: 14px 0; border-radius: 8px; font-weight: 700; font-size: 16px;
+            border: none; cursor: pointer; transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+        }
+        .primary-btn:hover { background: var(--primary-dark); transform: translateY(-2px); }
+
+        .hidden { display: none !important; }
+        .progress-fixed { position: fixed; bottom: 0; left: 0; width: 100%; height: 6px; background: #e2e8f0; }
+        .progress-fill { height: 100%; background: var(--primary); width: 100%; transition: width 0.2s linear; }
+
+        .card.text-card { display: block; text-align: center; padding: 60px; height: auto; }
+        
+        @keyframes fadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: 0; } }
+
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="header-left">
+            <div class="brand-icon">R</div>
+            <div class="game-title">Resemble</div>
+        </div>
+        <div class="header-left">
+            <div id="diff-chip" class="chip hidden">LEVEL 1</div>
+            <div id="timer-chip" class="chip hidden">06:00</div>
+            <div id="q-chip" class="chip hidden">Q 1</div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        
+        <div id="screen-intro" class="card text-card">
+            <h1 style="font-size: 32px; color: var(--text-main); margin-bottom: 15px;">Visual Reasoning</h1>
+            <p style="color: var(--text-muted); margin-bottom: 40px; font-size: 18px;">
+                Analyze the objective image and reconstruct it after applying the rotation rule.
+            </p>
+            <button class="primary-btn" style="width: 200px; border-radius: 100px;" onclick="startGame()">Start Assessment</button>
+        </div>
+
+        <div id="screen-game" class="card hidden">
+            
+            <div class="panel panel-left">
+                <div class="panel-header">
+                    <div class="label">OBJECTIVE</div>
+                </div>
+                <div class="grid-wrapper">
+                    <div class="grid seamless" id="grid-source"></div>
+                </div>
+                <div class="panel-footer">
+                    <div class="label" id="instr-label">ROTATE RIGHT</div>
+                    <div class="instr-val">
+                        <span class="instr-icon" id="instr-icon">↻</span>
+                        <span id="instr-text">180°</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel panel-right">
+                <div class="panel-header">
+                    <div class="label" style="opacity: 0;">TARGET</div>
+                </div>
+                <div class="grid-wrapper">
+                    <div class="grid segmented" id="grid-target"></div>
+                </div>
+                <div class="panel-footer">
+                    <div class="label" style="margin-bottom: 10px;">SELECT BLOCK</div>
+                    <div class="palette-grid" id="palette"></div>
+                    <button class="primary-btn" onclick="submitAnswer()">Submit Pattern</button>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="screen-result" class="card text-card hidden">
+            <h1 style="margin-bottom: 20px;">Complete</h1>
+            <div style="font-size: 64px; font-weight: 800; color: var(--primary); margin-bottom: 10px;" id="score-final">0</div>
+            <p style="color: var(--text-muted); margin-bottom: 30px;">Patterns Solved</p>
+            <button class="primary-btn" style="width: 200px; border-radius: 100px;" onclick="location.reload()">Retry</button>
+        </div>
+
+    </main>
+
+    <div class="progress-fixed"><div class="progress-fill" id="progress-bar"></div></div>
+
+    <script>
+        const GAME_DURATION = 360;
+        const GRID_SIZE = 3;
+        
+        let startTime, timerInt;
+        let qNum = 1;
+        let score = 0;
+        let activeBrush = 'solid-blue';
+        
+        let sourceGrid = [], targetGrid = [], expectedGrid = [];
+
+        // Blocks
+        const SOLIDS = ['solid-blue', 'solid-yellow'];
+        const SPLITS = ['split-yb-0', 'split-yb-1', 'split-yb-2', 'split-yb-3'];
+        const DISTRACT = ['split-br-0']; 
+
+        function startGame() {
+            document.getElementById('screen-intro').classList.add('hidden');
+            document.getElementById('screen-game').classList.remove('hidden');
+            document.getElementById('timer-chip').classList.remove('hidden');
+            document.getElementById('q-chip').classList.remove('hidden');
+            document.getElementById('diff-chip').classList.remove('hidden');
+            
+            startTime = Date.now();
+            timerInt = setInterval(tick, 200);
+            generateLevel();
+        }
+
+        function tick() {
+            const elapsed = (Date.now() - startTime) / 1000;
+            let rem = GAME_DURATION - elapsed;
+            if(rem <= 0) { rem = 0; endGame(); }
+            
+            const m = Math.floor(rem/60).toString().padStart(2,'0');
+            const s = Math.floor(rem%60).toString().padStart(2,'0');
+            document.getElementById('timer-chip').innerText = `${m}:${s}`;
+            document.getElementById('progress-bar').style.width = `${(rem/GAME_DURATION)*100}%`;
+        }
+
+        function generateLevel() {
+            let diff = 1;
+            let fill = 4;
+            let allowed = [...SOLIDS];
+            let transforms = ['copy', 'reflectH'];
+
+            if(qNum > 3) { diff = 2; fill = 5; allowed = [...SOLIDS, ...SPLITS]; transforms = ['rotate90', 'rotate180']; }
+            if(qNum > 7) { diff = 3; fill = 6; transforms = ['rotate90', 'rotate180', 'rotate270']; }
+
+            document.getElementById('q-chip').innerText = `Q ${qNum}`;
+            document.getElementById('diff-chip').innerText = `LEVEL ${diff}`;
+
+            // 1. Source
+            sourceGrid = makeGrid('bg-white');
+            let placed = 0;
+            while(placed < fill) {
+                const r = Math.floor(Math.random() * GRID_SIZE);
+                const c = Math.floor(Math.random() * GRID_SIZE);
+                if(sourceGrid[r][c] === 'bg-white') {
+                    sourceGrid[r][c] = allowed[Math.floor(Math.random() * allowed.length)];
+                    placed++;
+                }
+            }
+
+            // 2. Transform
+            const tTypes = {
+                'copy': { t: 'EXACT', i: '=' },
+                'reflectH': { t: 'REFLECT', i: '↔' },
+                'rotate90': { t: '90° RIGHT', i: '↷' },
+                'rotate180': { t: '180°', i: '↻' },
+                'rotate270': { t: '90° LEFT', i: '↶' }
+            };
+            const tKey = transforms[Math.floor(Math.random() * transforms.length)];
+            
+            document.getElementById('instr-text').innerText = tTypes[tKey].t;
+            document.getElementById('instr-icon').innerText = tTypes[tKey].i;
+            document.getElementById('instr-label').innerText = tKey.toUpperCase().replace(/\d+/,'');
+
+            // 3. Solve
+            expectedGrid = solve(sourceGrid, tKey);
+            targetGrid = makeGrid('bg-white');
+
+            // 4. Palette
+            generatePalette(expectedGrid);
+
+            // 5. Render
+            render();
+        }
+
+        function solve(src, type) {
+            const res = makeGrid('bg-white');
+            const n = GRID_SIZE;
+            for(let r=0; r<n; r++) {
+                for(let c=0; c<n; c++) {
+                    const val = src[r][c];
+                    if(val === 'bg-white') continue;
+                    
+                    let nr=r, nc=c;
+                    if(type === 'reflectH') { nr=r; nc=n-1-c; }
+                    else if(type === 'rotate90') { nr=c; nc=n-1-r; }
+                    else if(type === 'rotate180') { nr=n-1-r; nc=n-1-c; }
+                    else if(type === 'rotate270') { nr=n-1-c; nc=r; }
+                    
+                    res[nr][nc] = transformBlock(val, type);
+                }
+            }
+            return res;
+        }
+
+        function transformBlock(cls, type) {
+            if(cls.startsWith('solid')) return cls;
+            
+            const parts = cls.split('-');
+            if(parts[0] !== 'split') return cls;
+            
+            let angle = parseInt(parts[2]);
+            if(type === 'rotate90') angle = (angle+1)%4;
+            else if(type === 'rotate180') angle = (angle+2)%4;
+            else if(type === 'rotate270') angle = (angle+3)%4;
+            else if(type === 'reflectH') {
+                if(angle===0) angle=1; else if(angle===1) angle=0;
+                else if(angle===2) angle=3; else if(angle===3) angle=2;
+            }
+            return `split-${parts[1]}-${angle}`;
+        }
+
+        function generatePalette(neededGrid) {
+            const set = new Set();
+            for(let r=0; r<GRID_SIZE; r++) for(let c=0; c<GRID_SIZE; c++) {
+                if(neededGrid[r][c] !== 'bg-white') set.add(neededGrid[r][c]);
+            }
+            
+            const pool = Array.from(set);
+            pool.forEach(cls => {
+                if(cls.startsWith('split')) {
+                    const parts = cls.split('-');
+                    const angle = parseInt(parts[2]);
+                    const wrong = `split-${parts[1]}-${(angle+1)%4}`;
+                    if(!set.has(wrong)) pool.push(wrong);
+                }
+            });
+            if(Math.random() > 0.7) pool.push(DISTRACT[0]);
+
+            const finalSet = new Set(['bg-white', ...pool]);
+            
+            const pDiv = document.getElementById('palette');
+            pDiv.innerHTML = '';
+            
+            Array.from(finalSet).sort().forEach(cls => {
+                const el = document.createElement('div');
+                el.className = `p-item ${cls}`;
+                el.onclick = () => {
+                    activeBrush = cls;
+                    document.querySelectorAll('.p-item').forEach(x => x.classList.remove('selected'));
+                    el.classList.add('selected');
+                };
+                pDiv.appendChild(el);
+            });
+
+            const first = Array.from(finalSet).find(c => c !== 'bg-white') || 'bg-white';
+            activeBrush = first;
+            setTimeout(() => {
+                document.querySelectorAll('.p-item').forEach(i => { 
+                    if(i.classList.contains(first)) i.classList.add('selected'); 
+                });
+            }, 10);
+        }
+
+        function makeGrid(val) { return Array(GRID_SIZE).fill(null).map(()=>Array(GRID_SIZE).fill(val)); }
+
+        function render() {
+            const sDiv = document.getElementById('grid-source');
+            const tDiv = document.getElementById('grid-target');
+            sDiv.innerHTML = ''; tDiv.innerHTML = '';
+
+            for(let r=0; r<GRID_SIZE; r++) {
+                for(let c=0; c<GRID_SIZE; c++) {
+                    const sc = document.createElement('div');
+                    sc.className = `cell ${sourceGrid[r][c]}`;
+                    sDiv.appendChild(sc);
+
+                    const tc = document.createElement('div');
+                    tc.className = `cell ${targetGrid[r][c]}`;
+                    tc.onclick = () => { targetGrid[r][c] = activeBrush; render(); };
+                    tDiv.appendChild(tc);
+                }
+            }
+        }
+
+        function submitAnswer() {
+            let ok = true;
+            for(let r=0; r<GRID_SIZE; r++) for(let c=0; c<GRID_SIZE; c++) {
+                if(targetGrid[r][c] !== expectedGrid[r][c]) ok = false;
+            }
+            if(ok) score++;
+            qNum++;
+            generateLevel();
+        }
+
+        function endGame() {
+            clearInterval(timerInt);
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('screen-result').classList.remove('hidden');
+            document.getElementById('score-final').innerText = score;
+        }
+
+    </script>
+</body>
+</html>
