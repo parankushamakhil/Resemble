@@ -11,24 +11,19 @@
     <style>
         /* --- Design System --- */
         :root {
-            /* Palette */
             --primary: #0ea5e9;
             --primary-dark: #0284c7;
             --text-main: #1e293b;
             --text-muted: #64748b;
             --border-light: #e2e8f0;
             
-            /* Backgrounds */
             --app-bg: radial-gradient(circle at top left, #f8fafc 0%, #ffffff 100%);
             --card-bg: #ffffff;
             --panel-left-bg: #f1f5f9;
             
-            /* Game Colors */
             --c-blue: #3b82f6;
             --c-yellow: #fde047;
-            --c-red: #f43f5e;
             
-            /* Dimensions */
             --card-radius: 24px;
             --grid-size: 260px;
         }
@@ -74,7 +69,7 @@
             background: var(--card-bg);
             border-radius: var(--card-radius);
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
-            max-width: 960px; width: 100%; height: 600px;
+            max-width: 960px; width: 100%; height: 650px;
             border: 1px solid var(--border-light);
             display: flex; overflow: hidden;
             animation: fadeIn 0.4s ease-out;
@@ -109,37 +104,49 @@
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 1fr);
             width: 100%; height: 100%;
+            gap: 0; 
+            border: 4px solid #cbd5e1;
+            background: #cbd5e1;
         }
 
-        /* OBJECTIVE STYLE: Seamless Single Block */
-        /* Note: We force 'border: none' on children to override any color borders */
-        .grid.seamless {
-            gap: 0; border: 0; box-shadow: 0 10px 30px rgba(0,0,0,0.1); background: transparent;
+        /* Cell Styling */
+        .cell { 
+            width: 100%; height: 100%; 
+            position: relative; overflow: hidden; 
+            background: #fff;
+            transition: transform 0.1s, filter 0.1s;
         }
-        .grid.seamless .cell { 
-            border-radius: 0; 
-            border: none !important; /* Force removal of borders here */
-        }
-        /* Hide eraser icon in objective */
-        .grid.seamless .bg-white::after { display: none; } 
 
-        /* TARGET STYLE: Building Blocks */
-        .grid.segmented { gap: 6px; }
-        .grid.segmented .cell {
-            border-radius: 4px;
-            background: #f8fafc;
-            border: 2px solid #e2e8f0; /* Default border */
-            cursor: pointer;
-            transition: transform 0.1s;
+        /* OBJECTIVE GRID */
+        #grid-source .cell {
+            border: none !important;
         }
-        .grid.segmented .cell:hover { border-color: var(--primary); transform: scale(0.98); }
 
-        .cell { width: 100%; height: 100%; position: relative; overflow: hidden; }
+        /* TARGET GRID */
+        #grid-target .cell {
+            border: 0.5px solid rgba(0,0,0,0.05);
+        }
+
+        #grid-target .cell.drag-over {
+            background: #e0f2fe !important;
+            box-shadow: inset 0 0 0 2px var(--primary);
+        }
+        
+        #grid-target .cell.filled {
+            cursor: grab;
+        }
+        #grid-target .cell.filled:active {
+            cursor: grabbing;
+        }
+
+        #grid-target .cell[class*="split-"]:hover {
+            filter: brightness(0.95);
+        }
 
         /* --- Controls --- */
         .panel-footer {
             width: 100%; display: flex; flex-direction: column; align-items: center;
-            height: 120px; justify-content: flex-end;
+            height: 140px; justify-content: flex-end;
         }
 
         .instr-val {
@@ -150,38 +157,39 @@
         .instr-icon { font-size: 42px; color: var(--primary); }
 
         .palette-grid {
-            display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+            display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;
             margin-bottom: 15px;
+            background: #f8fafc;
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-light);
         }
-        .p-item {
-            width: 50px; height: 50px; border-radius: 8px; cursor: pointer;
-            border: 3px solid transparent; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: transform 0.2s;
-        }
-        .p-item:hover { transform: translateY(-3px); }
-        .p-item.selected {
-            border-color: var(--text-main); transform: scale(1.1);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1); z-index: 5;
-        }
-
-        /* --- COLOR UTILITIES --- */
-        /* These apply backgrounds. Borders are handled by .grid context above. */
         
-        .bg-white { background: #fff !important; }
-        /* Only show border/icon for palette or target grid, NOT objective */
-        .grid.segmented .bg-white, .p-item.bg-white { border: 1px solid #cbd5e1 !important; }
-        .grid.segmented .bg-white::after, .p-item.bg-white::after { 
-            content: '✕'; position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#cbd5e1; font-size: 12px; 
+        .p-item {
+            width: 50px; height: 50px; 
+            border-radius: 6px; 
+            cursor: grab;
+            border: 2px solid #cbd5e1; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: transform 0.1s;
         }
+        .p-item:active { cursor: grabbing; }
+        .p-item:hover { transform: translateY(-2px); border-color: var(--primary); }
+
+        /* --- COLORS --- */
+        .bg-white { background: #fff !important; }
+        .bg-white::after { content: '✕'; position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#cbd5e1; font-size: 14px; font-weight: bold;}
         
         .solid-blue { background: var(--c-blue) !important; }
         .solid-yellow { background: var(--c-yellow) !important; }
         
+        /* Split Blocks */
         .split-yb-0 { background: linear-gradient(135deg, var(--c-yellow) 50%, var(--c-blue) 50%) !important; }
         .split-yb-1 { background: linear-gradient(225deg, var(--c-yellow) 50%, var(--c-blue) 50%) !important; }
         .split-yb-2 { background: linear-gradient(315deg, var(--c-yellow) 50%, var(--c-blue) 50%) !important; }
         .split-yb-3 { background: linear-gradient(45deg, var(--c-yellow) 50%, var(--c-blue) 50%) !important; }
-        .split-br-0 { background: linear-gradient(135deg, var(--c-blue) 50%, var(--c-red) 50%) !important; }
+
+        .grid .bg-white::after { display: none; }
 
         /* Buttons */
         .primary-btn {
@@ -196,9 +204,20 @@
         .progress-fixed { position: fixed; bottom: 0; left: 0; width: 100%; height: 6px; background: #e2e8f0; }
         .progress-fill { height: 100%; background: var(--primary); width: 100%; transition: width 0.2s linear; }
 
-        .card.text-card { display: block; text-align: center; padding: 60px; height: auto; }
+        .card.text-card { display: block; text-align: center; padding: 40px; height: auto; }
         
         @keyframes fadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: 0; } }
+
+        /* Results Stats */
+        .stat-box { display: flex; gap: 40px; justify-content: center; margin-bottom: 30px; }
+        .stat-item h2 { font-size: 14px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        .stat-item div { font-size: 48px; font-weight: 800; color: var(--primary); }
+
+        /* Instructions List */
+        .instruction-list { text-align: left; max-width: 700px; margin: 0 auto 30px; color: var(--text-muted); line-height: 1.6; }
+        .instruction-list ol { padding-left: 20px; }
+        .instruction-list li { margin-bottom: 12px; }
+        .instruction-list strong { color: var(--text-main); }
 
     </style>
 </head>
@@ -219,10 +238,18 @@
     <main class="main-content">
         
         <div id="screen-intro" class="card text-card">
-            <h1 style="font-size: 32px; color: var(--text-main); margin-bottom: 15px;">Visual Reasoning</h1>
-            <p style="color: var(--text-muted); margin-bottom: 40px; font-size: 18px;">
-                Analyze the objective image and reconstruct it after applying the rotation rule.
-            </p>
+            <h1 style="font-size: 28px; color: var(--text-main); margin-bottom: 20px;">How to Play Resemble (Cognify)</h1>
+            
+            <div class="instruction-list">
+                <ol>
+                    <li><strong>Analyze the Source Figure:</strong> A pattern of colored shapes appears on the left.</li>
+                    <li><strong>Check Instructions:</strong> Look for instructions like "rotate 90°" or "reflect," which tell you how to alter the figure.</li>
+                    <li><strong>Visualize the Transformation:</strong> Mentally rotate or flip the original shape as instructed.</li>
+                    <li><strong>Recreate on the Grid:</strong> Use the available building blocks (shapes and colors) to construct the transformed image on the blank grid to the right.</li>
+                    <li><strong>Submit Quickly:</strong> Complete as many patterns as possible within the time limit (6 Minutes for the game).</li>
+                </ol>
+            </div>
+
             <button class="primary-btn" style="width: 200px; border-radius: 100px;" onclick="startGame()">Start Assessment</button>
         </div>
 
@@ -233,7 +260,7 @@
                     <div class="label">OBJECTIVE</div>
                 </div>
                 <div class="grid-wrapper">
-                    <div class="grid seamless" id="grid-source"></div>
+                    <div class="grid" id="grid-source"></div>
                 </div>
                 <div class="panel-footer">
                     <div class="label" id="instr-label">ROTATE RIGHT</div>
@@ -249,10 +276,10 @@
                     <div class="label" style="opacity: 0;">TARGET</div>
                 </div>
                 <div class="grid-wrapper">
-                    <div class="grid segmented" id="grid-target"></div>
+                    <div class="grid" id="grid-target"></div>
                 </div>
                 <div class="panel-footer">
-                    <div class="label" style="margin-bottom: 10px;">SELECT BLOCK</div>
+                    <div class="label" style="margin-bottom: 10px;">DRAG IN TO PLACE • DOUBLE CLICK TO ROTATE</div>
                     <div class="palette-grid" id="palette"></div>
                     <button class="primary-btn" onclick="submitAnswer()">Submit Pattern</button>
                 </div>
@@ -261,10 +288,20 @@
         </div>
 
         <div id="screen-result" class="card text-card hidden">
-            <h1 style="margin-bottom: 20px;">Complete</h1>
-            <div style="font-size: 64px; font-weight: 800; color: var(--primary); margin-bottom: 10px;" id="score-final">0</div>
-            <p style="color: var(--text-muted); margin-bottom: 30px;">Patterns Solved</p>
-            <button class="primary-btn" style="width: 200px; border-radius: 100px;" onclick="location.reload()">Retry</button>
+            <h1 style="margin-bottom: 40px;">Assessment Complete</h1>
+            
+            <div class="stat-box">
+                <div class="stat-item">
+                    <h2>Attempted</h2>
+                    <div id="stat-attempted">0</div>
+                </div>
+                <div class="stat-item">
+                    <h2>Total Score</h2>
+                    <div id="stat-score">0</div>
+                </div>
+            </div>
+
+            <button class="primary-btn" style="width: 200px; border-radius: 100px;" onclick="location.reload()">Return Home</button>
         </div>
 
     </main>
@@ -278,14 +315,18 @@
         let startTime, timerInt;
         let qNum = 1;
         let score = 0;
-        let activeBrush = 'solid-blue';
+        let attempted = 0;
+        
+        let draggedColor = null;
+        let dragSource = null; 
+        let isDropped = false;
         
         let sourceGrid = [], targetGrid = [], expectedGrid = [];
 
-        // Blocks
+        // Constants
         const SOLIDS = ['solid-blue', 'solid-yellow'];
         const SPLITS = ['split-yb-0', 'split-yb-1', 'split-yb-2', 'split-yb-3'];
-        const DISTRACT = ['split-br-0']; 
+        const FIXED_PALETTE = ['solid-blue', 'solid-yellow', 'split-yb-0'];
 
         function startGame() {
             document.getElementById('screen-intro').classList.add('hidden');
@@ -294,6 +335,8 @@
             document.getElementById('q-chip').classList.remove('hidden');
             document.getElementById('diff-chip').classList.remove('hidden');
             
+            renderPalette();
+
             startTime = Date.now();
             timerInt = setInterval(tick, 200);
             generateLevel();
@@ -311,18 +354,33 @@
         }
 
         function generateLevel() {
+            // Level Logic
+            // Level 1: Q1-10
+            // Level 2: Q11-20
+            // Level 3: Q21+
+            
             let diff = 1;
             let fill = 4;
-            let allowed = [...SOLIDS];
-            let transforms = ['copy', 'reflectH'];
+            let allowed = [...SOLIDS]; 
+            let transforms = ['copy', 'reflectH']; 
 
-            if(qNum > 3) { diff = 2; fill = 5; allowed = [...SOLIDS, ...SPLITS]; transforms = ['rotate90', 'rotate180']; }
-            if(qNum > 7) { diff = 3; fill = 6; transforms = ['rotate90', 'rotate180', 'rotate270']; }
+            if(qNum > 10) { 
+                diff = 2; 
+                fill = 5; 
+                allowed = [...SOLIDS, ...SPLITS]; 
+                transforms = ['rotate90', 'rotate180']; 
+            }
+            if(qNum > 20) { 
+                diff = 3; 
+                fill = 6; 
+                allowed = [...SOLIDS, ...SPLITS]; 
+                transforms = ['rotate90', 'rotate180', 'rotate270']; 
+            }
 
             document.getElementById('q-chip').innerText = `Q ${qNum}`;
             document.getElementById('diff-chip').innerText = `LEVEL ${diff}`;
 
-            // 1. Source
+            // Generate Source
             sourceGrid = makeGrid('bg-white');
             let placed = 0;
             while(placed < fill) {
@@ -334,7 +392,7 @@
                 }
             }
 
-            // 2. Transform
+            // Transform
             const tTypes = {
                 'copy': { t: 'EXACT', i: '=' },
                 'reflectH': { t: 'REFLECT', i: '↔' },
@@ -348,15 +406,10 @@
             document.getElementById('instr-icon').innerText = tTypes[tKey].i;
             document.getElementById('instr-label').innerText = tKey.toUpperCase().replace(/\d+/,'');
 
-            // 3. Solve
             expectedGrid = solve(sourceGrid, tKey);
             targetGrid = makeGrid('bg-white');
 
-            // 4. Palette
-            generatePalette(expectedGrid);
-
-            // 5. Render
-            render();
+            renderGrids();
         }
 
         function solve(src, type) {
@@ -381,10 +434,7 @@
 
         function transformBlock(cls, type) {
             if(cls.startsWith('solid')) return cls;
-            
             const parts = cls.split('-');
-            if(parts[0] !== 'split') return cls;
-            
             let angle = parseInt(parts[2]);
             if(type === 'rotate90') angle = (angle+1)%4;
             else if(type === 'rotate180') angle = (angle+2)%4;
@@ -396,75 +446,115 @@
             return `split-${parts[1]}-${angle}`;
         }
 
-        function generatePalette(neededGrid) {
-            const set = new Set();
-            for(let r=0; r<GRID_SIZE; r++) for(let c=0; c<GRID_SIZE; c++) {
-                if(neededGrid[r][c] !== 'bg-white') set.add(neededGrid[r][c]);
-            }
-            
-            const pool = Array.from(set);
-            pool.forEach(cls => {
-                if(cls.startsWith('split')) {
-                    const parts = cls.split('-');
-                    const angle = parseInt(parts[2]);
-                    const wrong = `split-${parts[1]}-${(angle+1)%4}`;
-                    if(!set.has(wrong)) pool.push(wrong);
-                }
-            });
-            if(Math.random() > 0.7) pool.push(DISTRACT[0]);
-
-            const finalSet = new Set(['bg-white', ...pool]);
-            
+        function renderPalette() {
             const pDiv = document.getElementById('palette');
             pDiv.innerHTML = '';
             
-            Array.from(finalSet).sort().forEach(cls => {
+            FIXED_PALETTE.forEach(cls => {
                 const el = document.createElement('div');
                 el.className = `p-item ${cls}`;
-                el.onclick = () => {
-                    activeBrush = cls;
-                    document.querySelectorAll('.p-item').forEach(x => x.classList.remove('selected'));
-                    el.classList.add('selected');
+                el.draggable = true;
+                el.ondragstart = (e) => {
+                    draggedColor = cls;
+                    dragSource = null;
+                    isDropped = false;
+                    e.dataTransfer.effectAllowed = 'copy';
                 };
                 pDiv.appendChild(el);
             });
-
-            const first = Array.from(finalSet).find(c => c !== 'bg-white') || 'bg-white';
-            activeBrush = first;
-            setTimeout(() => {
-                document.querySelectorAll('.p-item').forEach(i => { 
-                    if(i.classList.contains(first)) i.classList.add('selected'); 
-                });
-            }, 10);
         }
 
         function makeGrid(val) { return Array(GRID_SIZE).fill(null).map(()=>Array(GRID_SIZE).fill(val)); }
 
-        function render() {
+        function renderGrids() {
             const sDiv = document.getElementById('grid-source');
             const tDiv = document.getElementById('grid-target');
             sDiv.innerHTML = ''; tDiv.innerHTML = '';
 
             for(let r=0; r<GRID_SIZE; r++) {
                 for(let c=0; c<GRID_SIZE; c++) {
+                    // Source
                     const sc = document.createElement('div');
                     sc.className = `cell ${sourceGrid[r][c]}`;
                     sDiv.appendChild(sc);
 
+                    // Target
                     const tc = document.createElement('div');
-                    tc.className = `cell ${targetGrid[r][c]}`;
-                    tc.onclick = () => { targetGrid[r][c] = activeBrush; render(); };
+                    const colorClass = targetGrid[r][c];
+                    tc.className = `cell ${colorClass}`;
+                    if(colorClass !== 'bg-white') tc.classList.add('filled');
+                    
+                    // --- DRAG ---
+                    if(colorClass !== 'bg-white') {
+                        tc.draggable = true;
+                        tc.ondragstart = (e) => {
+                            draggedColor = colorClass;
+                            dragSource = {r, c};
+                            isDropped = false;
+                            e.dataTransfer.effectAllowed = 'move';
+                            setTimeout(() => tc.style.opacity = '0.5', 0);
+                        };
+                        tc.ondragend = (e) => {
+                            tc.style.opacity = '1';
+                            if (!isDropped && dragSource) {
+                                targetGrid[dragSource.r][dragSource.c] = 'bg-white';
+                                renderGrids();
+                            }
+                            draggedColor = null;
+                            dragSource = null;
+                        };
+                    }
+
+                    // --- DROP ---
+                    tc.ondragover = (e) => { e.preventDefault(); tc.classList.add('drag-over'); };
+                    tc.ondragleave = () => tc.classList.remove('drag-over');
+                    tc.ondrop = (e) => {
+                        e.preventDefault();
+                        tc.classList.remove('drag-over');
+                        isDropped = true;
+                        if (draggedColor) {
+                            if (dragSource) targetGrid[dragSource.r][dragSource.c] = 'bg-white';
+                            targetGrid[r][c] = draggedColor;
+                            renderGrids();
+                        }
+                    };
+
+                    // --- DOUBLE CLICK CHECK ---
+                    tc.onclick = (e) => {
+                        if (e.detail === 2) {
+                            rotateCell(r, c);
+                        }
+                    };
+
                     tDiv.appendChild(tc);
                 }
             }
         }
 
-        function submitAnswer() {
-            let ok = true;
-            for(let r=0; r<GRID_SIZE; r++) for(let c=0; c<GRID_SIZE; c++) {
-                if(targetGrid[r][c] !== expectedGrid[r][c]) ok = false;
+        function rotateCell(r, c) {
+            const current = targetGrid[r][c];
+            if(current && current.startsWith('split-yb-')) {
+                const parts = current.split('-');
+                let angle = parseInt(parts[2]);
+                angle = (angle + 1) % 4;
+                targetGrid[r][c] = `split-yb-${angle}`;
+                renderGrids();
             }
-            if(ok) score++;
+        }
+
+        function submitAnswer() {
+            let correct = true;
+            for(let r=0; r<GRID_SIZE; r++) for(let c=0; c<GRID_SIZE; c++) {
+                if(targetGrid[r][c] !== expectedGrid[r][c]) correct = false;
+            }
+
+            // Scoring
+            if(correct) {
+                if(qNum <= 10) score += 1;
+                else score += 2;
+            }
+            
+            attempted++;
             qNum++;
             generateLevel();
         }
@@ -473,7 +563,9 @@
             clearInterval(timerInt);
             document.getElementById('screen-game').classList.add('hidden');
             document.getElementById('screen-result').classList.remove('hidden');
-            document.getElementById('score-final').innerText = score;
+            
+            document.getElementById('stat-attempted').innerText = attempted;
+            document.getElementById('stat-score').innerText = score;
         }
 
     </script>
