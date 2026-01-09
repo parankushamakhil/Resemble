@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Resemble - Final Assessment</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,7 +39,9 @@
             flex-direction: column;
             overflow-y: auto;
             user-select: none;
-            -webkit-user-select: none; /* Safari */
+            -webkit-user-select: none;
+            /* Prevent pull-to-refresh on mobile */
+            overscroll-behavior: none; 
         }
 
         /* --- Header --- */
@@ -116,6 +118,8 @@
             gap: 0; 
             border: 4px solid #cbd5e1;
             background: #cbd5e1;
+            /* CRITICAL: Disables browser scrolling when touching grid */
+            touch-action: none; 
         }
 
         /* Cell Styling */
@@ -123,8 +127,9 @@
             width: 100%; height: 100%; 
             position: relative; overflow: hidden; 
             background: #fff;
-            /* Performance optimization: will-change hints to browser to optimize rendering */
             will-change: background-image; 
+            /* Remove mobile tap highlight */
+            -webkit-tap-highlight-color: transparent; 
         }
 
         /* OBJECTIVE GRID */
@@ -135,7 +140,6 @@
         #grid-target .cell.drag-over { background: #e0f2fe !important; box-shadow: inset 0 0 0 2px var(--primary); }
         #grid-target .cell.filled { cursor: grab; }
         #grid-target .cell.filled:active { cursor: grabbing; }
-        /* Rotation Hint */
         #grid-target .cell[class*="split-"]:hover { filter: brightness(0.95); }
 
         /* --- Controls --- */
@@ -171,11 +175,12 @@
             border: 2px solid #cbd5e1; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             transition: transform 0.1s;
-            touch-action: none; /* Critical for mobile drag */
+            /* CRITICAL: Disables browser scrolling on palette items */
+            touch-action: none; 
+            -webkit-tap-highlight-color: transparent;
         }
         .p-item:active { cursor: grabbing; transform: scale(0.95); }
         .p-item:hover { transform: translateY(-2px); border-color: var(--primary); }
-        .p-item[class*="split-"]:hover { cursor: context-menu; }
 
         /* --- Drag Ghost Element (Custom Drag) --- */
         #drag-ghost {
@@ -184,11 +189,11 @@
             border-radius: 6px;
             pointer-events: none;
             z-index: 9999;
-            opacity: 0.8;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            border: 2px solid var(--primary);
+            opacity: 0.9;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+            border: 3px solid var(--primary);
             display: none;
-            transform: translate(-50%, -50%); /* Center on finger */
+            /* Initial transform handled by JS */
         }
 
         /* --- Game Status Bar (Bottom) --- */
@@ -261,6 +266,8 @@
             padding: 14px 0; border-radius: 8px; font-weight: 700; font-size: 16px;
             border: none; cursor: pointer; transition: all 0.2s;
             box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+            /* Prevent double-tap zoom on buttons */
+            touch-action: manipulation;
         }
         .primary-btn:hover { background: var(--primary-dark); transform: translateY(-2px); }
 
@@ -316,6 +323,7 @@
             .card.text-card { padding: 20px; }
             .game-title { font-size: 16px; }
             .status-container { width: 100%; }
+            .panel { padding: 15px; }
         }
 
     </style>
@@ -340,7 +348,7 @@
                     <li><strong>Analyze the Source Figure:</strong> A pattern of colored shapes appears on the left.</li>
                     <li><strong>Check Instructions:</strong> Look for instructions like "rotate 90°" or "reflect," which tell you how to alter the figure.</li>
                     <li><strong>Visualize the Transformation:</strong> Mentally rotate or flip the original shape as instructed.</li>
-                    <li><strong>Recreate on the Grid:</strong> Use the available building blocks. <strong>Double-click the mixed block in the palette</strong> (or in the grid) to rotate it.</li>
+                    <li><strong>Recreate on the Grid:</strong> Use the available building blocks. <strong>Double-tap the mixed block in the palette</strong> (or in the grid) to rotate it.</li>
                     <li><strong>Submit Quickly:</strong> Complete as many patterns as possible within the time limit (6 Minutes).</li>
                 </ol>
             </div>
@@ -374,7 +382,7 @@
                         <div class="grid" id="grid-target"></div>
                     </div>
                     <div class="panel-footer">
-                        <div class="label" style="margin-bottom: 10px;">DOUBLE CLICK TO ROTATE • DRAG OUT TO REMOVE</div>
+                        <div class="label" style="margin-bottom: 10px;">DOUBLE TAP TO ROTATE • DRAG OUT TO REMOVE</div>
                         <div class="palette-grid" id="palette"></div>
                         <button class="primary-btn" onclick="submitAnswer()">Submit Pattern</button>
                     </div>
@@ -429,10 +437,11 @@
         const SPLITS = ['split-yb-0', 'split-yb-1', 'split-yb-2', 'split-yb-3'];
         const FIXED_PALETTE = ['solid-blue', 'solid-yellow', 'split-yb-0'];
 
-        // --- POINTER EVENT STATE (Unified Touch/Mouse) ---
+        // --- POINTER EVENT STATE ---
         let isDragging = false;
         let dragItemClass = null;
         let dragOrigin = null; // null if from palette, {r, c} if from grid
+        let lastTapTime = 0; // For custom double tap logic
         const ghostEl = document.getElementById('drag-ghost');
 
         function startGame() {
@@ -442,6 +451,8 @@
             // Attach global pointer events for dragging
             window.addEventListener('pointermove', onPointerMove);
             window.addEventListener('pointerup', onPointerUp);
+            // Cancel drag if pointer leaves window
+            window.addEventListener('pointercancel', onPointerUp);
 
             renderPalette();
             startTime = Date.now();
@@ -456,10 +467,33 @@
             document.getElementById('timer-bar-fill').style.width = `${(rem/GAME_DURATION)*100}%`;
         }
 
-        // --- UNIFIED DRAG SYSTEM (Pointer Events) ---
+        // --- UNIFIED DRAG SYSTEM & CUSTOM DOUBLE TAP ---
         
-        function onPointerDown(e, cls, origin) {
-            e.preventDefault(); // Prevent default touch actions
+        function handleInteraction(e, cls, origin) {
+            e.preventDefault(); 
+            const now = Date.now();
+            const timeDiff = now - lastTapTime;
+            
+            // --- CUSTOM DOUBLE TAP LOGIC ---
+            // If tapped twice within 300ms, consider it a double tap/click
+            if (timeDiff < 300 && timeDiff > 0) {
+                // Perform Rotation
+                if (origin) {
+                    // It's a grid cell
+                    rotateCell(origin.r, origin.c);
+                } else {
+                    // It's a palette item
+                    rotatePaletteItem(e.target, cls);
+                }
+                isDragging = false; // Cancel any drag that might have started
+                ghostEl.style.display = 'none';
+                lastTapTime = 0; // Reset
+                return;
+            }
+            
+            lastTapTime = now;
+
+            // --- START DRAG LOGIC ---
             isDragging = true;
             dragItemClass = cls;
             dragOrigin = origin;
@@ -469,7 +503,7 @@
             ghostEl.style.display = 'block';
             updateGhostPosition(e.clientX, e.clientY);
             
-            // If dragging from grid, visually "dim" the original cell immediately
+            // Visual feedback on source
             if(origin) {
                 const cell = document.getElementById(`tcell-${origin.r}-${origin.c}`);
                 if(cell) cell.style.opacity = '0.3';
@@ -478,7 +512,7 @@
 
         function onPointerMove(e) {
             if(!isDragging) return;
-            e.preventDefault();
+            e.preventDefault(); // Stop scrolling while dragging
             updateGhostPosition(e.clientX, e.clientY);
         }
 
@@ -510,7 +544,7 @@
                     targetGrid[dragOrigin.r][dragOrigin.c] = 'bg-white';
                     renderGrids();
                 } else {
-                    // Dropped from palette to nowhere -> just reset, grid unchanged
+                    // Dropped from palette to nowhere -> Reset opacity of origin grid cell if needed
                     if(dragOrigin) {
                         const cell = document.getElementById(`tcell-${dragOrigin.r}-${dragOrigin.c}`);
                         if(cell) cell.style.opacity = '1';
@@ -524,8 +558,10 @@
         }
 
         function updateGhostPosition(x, y) {
+            // Offset Y by -50px so the user can see the block above their finger
             ghostEl.style.left = x + 'px';
-            ghostEl.style.top = y + 'px';
+            ghostEl.style.top = (y - 50) + 'px'; 
+            ghostEl.style.transform = "translate(-50%, -50%)";
         }
 
         // --- LEVEL GENERATION ---
@@ -680,24 +716,26 @@
                 let currentVisualClass = cls;
                 el.className = `p-item ${currentVisualClass}`;
                 
-                // POINTER DOWN (Start Drag)
-                el.onpointerdown = (e) => onPointerDown(e, currentVisualClass, null);
-
-                // DOUBLE CLICK ROTATION
-                el.onclick = (e) => {
-                    if(e.detail === 2 && currentVisualClass.startsWith('split-')) {
-                        const parts = currentVisualClass.split('-');
-                        let angle = parseInt(parts[2]);
-                        angle = (angle + 1) % 4; 
-                        
-                        el.classList.remove(currentVisualClass);
-                        currentVisualClass = `split-${parts[1]}-${angle}`;
-                        el.classList.add(currentVisualClass);
-                    }
-                };
+                // UNIFIED POINTER DOWN: Handles both Drag Start and Double Tap detection
+                el.onpointerdown = (e) => handleInteraction(e, currentVisualClass, null);
 
                 pDiv.appendChild(el);
             });
+        }
+
+        function rotatePaletteItem(el, oldClass) {
+            if(oldClass.startsWith('split-')) {
+                const parts = oldClass.split('-');
+                let angle = parseInt(parts[2]);
+                angle = (angle + 1) % 4; 
+                
+                el.classList.remove(oldClass);
+                const newClass = `split-${parts[1]}-${angle}`;
+                el.classList.add(newClass);
+                
+                // Important: Update the listener so the next click carries the new class
+                el.onpointerdown = (e) => handleInteraction(e, newClass, null);
+            }
         }
 
         function makeGrid(val) { return Array(gridSize).fill(null).map(()=>Array(gridSize).fill(val)); }
@@ -724,14 +762,9 @@
 
                     if(colorClass !== 'bg-white') {
                         tc.classList.add('filled');
-                        // Allow dragging from grid
-                        tc.onpointerdown = (e) => onPointerDown(e, colorClass, {r, c});
+                        // Allow dragging/double-tapping from grid
+                        tc.onpointerdown = (e) => handleInteraction(e, colorClass, {r, c});
                     }
-
-                    // Double click rotation on grid
-                    tc.onclick = (e) => {
-                        if (e.detail === 2) rotateCell(r, c);
-                    };
 
                     tDiv.appendChild(tc);
                 }
@@ -770,6 +803,7 @@
             // Clean up listeners
             window.removeEventListener('pointermove', onPointerMove);
             window.removeEventListener('pointerup', onPointerUp);
+            window.removeEventListener('pointercancel', onPointerUp);
             
             document.getElementById('screen-game').classList.add('hidden');
             document.getElementById('screen-result').classList.remove('hidden');
